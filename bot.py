@@ -8,46 +8,38 @@ import openai
 # достаем телеграм токен
 c = config.Config()
 token = c.put("TELEGRAM_TOKEN")
+openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
-openai.api_key = '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'
 
-# инициализируем текущий вопрос и результат теста
-global currentQuestion
-global user_ans
-currentQuestion = 0
-user_ans = []   # замена ISum, хранит список всех ответов пользователя
+global currentQuestion #текущий вопрос
+global user_ans # хранит список всех ответов пользователя
+global finished #завершен тест или нет
+finished = False
+global back_q
+back_q = False
+gate = [0, 6] # варианты ответов
 
-# варианты ответов
-gate = [0, 6]
+
+#global gpt_running
+#gpt_running = False
+
 
 # достаем вопросы
 file = open("questions/reisas", "r", encoding="UTF8")
 r = file.read()
 t = r.split("\n")
 
-global finished
-global gpt_running
-finished = False
-gpt_running = False
-
-global back_q
-back_q = False
 
 
 @bot.message_handler(commands=["start"])
 def start(message):
     global currentQuestion
-    # get username
-    global username
-    global gpt_running
     global finished
-    username = str(message.chat.id)
-
     currentQuestion = 0
-    user_ans = []
-    gpt_running = False
     finished = False
+    #global gpt_running
+    #gpt_running = False
 
     bot.send_message(
         message.chat.id,
@@ -66,12 +58,13 @@ def start(message):
 
     # отправляем текущий вопрос
     bot.send_message(message.chat.id, t[0])
-    c.push(username, [currentQuestion + 1, user_ans])
+    c.push(str(message.chat.id), [currentQuestion + 1, [],finished])
 
 
 @bot.message_handler(commands=["info"])
 def info(message):
     global currentQuestion
+    currentQuestion = c.put(str(message.chat.id))[0]
     bot.send_message(
         message.chat.id,
         f"Списк команд:\n"
@@ -89,7 +82,8 @@ def back(message):
     global currentQuestion
     global finished
     global back_q
-
+    currentQuestion = c.put(str(message.chat.id))[0]
+    user_ans = c.put(str(message.chat.id))[1]
     if currentQuestion == 0:
         bot.send_message(
             message.chat.id,
@@ -97,9 +91,6 @@ def back(message):
         )
         bot.send_message(message.chat.id, t[currentQuestion])
         return
-
-    currentQuestion = c.put(str(message.chat.id))[0]
-    user_ans = c.put(str(message.chat.id))[1]
     bot.send_message(
         message.chat.id,
         f"Введите номер вопроса, к которому хотите вернуться"
@@ -115,15 +106,18 @@ def lalal(message):
     global finished
     global back_q
 
-    print(user_ans)
+    print(str(message.chat.id),message.text)
+
+
+
     if back_q:
-        try:
+        if message.text.isdigit():
             text = int(message.text)
             # если да, тогда смотрим входит ли он в диапозон от 0 до 6
             if 1 <= text < currentQuestion:
                 currentQuestion = text - 1
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
                 user_ans = user_ans[:currentQuestion]
-                c.push(str(message.chat.id), [currentQuestion, user_ans])
                 back_q = False
                 bot.send_message(message.chat.id, t[currentQuestion])
                 return
@@ -133,11 +127,11 @@ def lalal(message):
                     f"Введите число в диапазоне от 1 до {currentQuestion - 1}"
                 )
                 return
-        except:
+        else:
             bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
             return
 
-    if finished:
+    if c.put(str(message.chat.id))[2]: #если тест уже завершен
         bot.send_message(
             message.chat.id,
             f"Кажется, Вы уже прошли тестирование. Для повторного прохождения введите /start"
@@ -147,21 +141,20 @@ def lalal(message):
     user_ans = c.put(str(message.chat.id))[1]
     # если не все вопросы заданы
     # проверяем является ли ответ числом
-    try:
+    if message.text.isdigit():
         text = int(message.text)
         # если да, тогда смотрим входит ли он в диапозон от 0 до 6
         if gate[0] <= text <= gate[1]:
             # увеличиваем результат и счетчик вопросов
             user_ans.append(text)
-            c.push(str(message.chat.id), [currentQuestion, user_ans])
-            c.push(str(message.chat.id), [currentQuestion + 1, user_ans])
+            c.push(str(message.chat.id), [currentQuestion+1, user_ans,finished])
             if currentQuestion <= len(t) - 1:
                 bot.send_message(message.chat.id, t[currentQuestion])
         # если не входит повторяем текущий вопрос
         else:
             bot.send_message(message.chat.id, f"шкала от {gate[0]} до {gate[1]}")
             bot.send_message(message.chat.id, t[currentQuestion-1])
-    except:
+    else:
         # если ответ не является числом, говорим об этом юзеру
         bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
         bot.send_message(message.chat.id, t[currentQuestion-1])
@@ -169,7 +162,6 @@ def lalal(message):
     if currentQuestion == len(t):
         # когда вопросы закончились, генерируем диаграмму и отправляем юзеру
         max_val = len(t) * gate[1]
-        print(sum(user_ans))
         diagramGenerator.Diagram().bebra([sum(user_ans), max_val - sum(user_ans)])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
@@ -190,10 +182,9 @@ def lalal(message):
                 f"иногда Ваше поведение может быть агрессивным и вызывать раздражение у окружающих. "
                 f"Выводы можете делать сами ;)"
             )
-        finished = True
 
         # обнуляем текущий вопрос и удаляем тест из списка ожидающих прохождение
-        c.push(str(message.chat.id), [0, 0])
+        c.push(str(message.chat.id), [0, 0,[],True])
 
 
 bot.polling(none_stop=True)

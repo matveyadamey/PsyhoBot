@@ -12,8 +12,6 @@ openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
 
-global currentQuestion #текущий вопрос
-global user_ans # хранит список всех ответов пользователя
 global finished #завершен тест или нет
 finished = False
 global back_q
@@ -34,7 +32,6 @@ t = r.split("\n")
 
 @bot.message_handler(commands=["start"])
 def start(message):
-    global currentQuestion
     global finished
     currentQuestion = 0
     finished = False
@@ -63,7 +60,6 @@ def start(message):
 
 @bot.message_handler(commands=["info"])
 def info(message):
-    global currentQuestion
     currentQuestion = c.put(str(message.chat.id))[0]
     bot.send_message(
         message.chat.id,
@@ -78,12 +74,10 @@ def info(message):
 # возвращаемся к вопросу
 @bot.message_handler(commands=['back'])
 def back(message):
-    global user_ans
-    global currentQuestion
     global finished
     global back_q
     currentQuestion = c.put(str(message.chat.id))[0]
-    user_ans = c.put(str(message.chat.id))[1]
+
     if currentQuestion == 0:
         bot.send_message(
             message.chat.id,
@@ -98,73 +92,19 @@ def back(message):
     back_q = True
 
 
-# принимаем ответ
-@bot.message_handler(content_types=["text"])
-def lalal(message):
-    global user_ans
-    global currentQuestion
-    global finished
-    global back_q
 
-    print(str(message.chat.id),message.text)
+def finish_test(message):
 
-
-
-    if back_q:
-        if message.text.isdigit():
-            text = int(message.text)
-            # если да, тогда смотрим входит ли он в диапозон от 0 до 6
-            if 1 <= text < currentQuestion:
-                currentQuestion = text - 1
-                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
-                user_ans = user_ans[:currentQuestion]
-                back_q = False
-                bot.send_message(message.chat.id, t[currentQuestion])
-                return
-            else:
-                bot.send_message(
-                    message.chat.id,
-                    f"Введите число в диапазоне от 1 до {currentQuestion - 1}"
-                )
-                return
-        else:
-            bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
-            return
-
-    if c.put(str(message.chat.id))[2]: #если тест уже завершен
-        bot.send_message(
-            message.chat.id,
-            f"Кажется, Вы уже прошли тестирование. Для повторного прохождения введите /start"
-        )
-        return
-    currentQuestion = c.put(str(message.chat.id))[0]
-    user_ans = c.put(str(message.chat.id))[1]
-    # если не все вопросы заданы
-    # проверяем является ли ответ числом
-    if message.text.isdigit():
-        text = int(message.text)
-        # если да, тогда смотрим входит ли он в диапозон от 0 до 6
-        if gate[0] <= text <= gate[1]:
-            # увеличиваем результат и счетчик вопросов
-            user_ans.append(text)
-            c.push(str(message.chat.id), [currentQuestion+1, user_ans,finished])
-            if currentQuestion <= len(t) - 1:
-                bot.send_message(message.chat.id, t[currentQuestion])
-        # если не входит повторяем текущий вопрос
-        else:
-            bot.send_message(message.chat.id, f"шкала от {gate[0]} до {gate[1]}")
-            bot.send_message(message.chat.id, t[currentQuestion-1])
-    else:
-        # если ответ не является числом, говорим об этом юзеру
-        bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
-        bot.send_message(message.chat.id, t[currentQuestion-1])
-
-    if currentQuestion == len(t):
-        # когда вопросы закончились, генерируем диаграмму и отправляем юзеру
+        user_ans=c.put(str(message.chat.id))[1]
         max_val = len(t) * gate[1]
+
+        #генерация и отправка диаграммы
         diagramGenerator.Diagram().bebra([sum(user_ans), max_val - sum(user_ans)])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
+
+        # отправлялка советов
+
         if sum(user_ans) < max_val / 3:
             bot.send_message(
                 message.chat.id,
@@ -184,7 +124,78 @@ def lalal(message):
             )
 
         # обнуляем текущий вопрос и удаляем тест из списка ожидающих прохождение
-        c.push(str(message.chat.id), [0, 0,[],True])
+        c.push(str(message.chat.id), [0, 0, [], True])
+
+
+def next_query(message):
+    currentQuestion=c.put(str(message.chat.id))[0]
+    user_ans = c.put(str(message.chat.id))[1]
+    # проверяем является ли ответ числом
+    if message.text.isdigit():
+        text = int(message.text)
+        # если да, тогда смотрим входит ли он в диапозон от 0 до 6
+        if gate[0] <= text <= gate[1]:
+            # увеличиваем результат и счетчик вопросов
+            user_ans.append(text)
+            c.push(str(message.chat.id), [currentQuestion + 1, user_ans, finished])
+            if currentQuestion <= len(t) - 1:
+                bot.send_message(message.chat.id, t[currentQuestion])
+        # если не входит повторяем текущий вопрос
+        else:
+            bot.send_message(message.chat.id, f"шкала от {gate[0]} до {gate[1]}")
+            bot.send_message(message.chat.id, t[currentQuestion - 1])
+    else:
+        # если ответ не является числом, говорим об этом юзеру
+        bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
+        bot.send_message(message.chat.id, t[currentQuestion - 1])
+
+
+
+
+# принимаем ответ
+@bot.message_handler(content_types=["text"])
+def lalal(message):
+    global finished
+    global back_q
+    currentQuestion=c.put(str(message.chat.id))[0]
+    user_ans=c.put(str(message.chat.id))[1]
+    print(str(message.chat.id),message.text, currentQuestion)
+
+    # когда вопросы закончились
+    if currentQuestion >= len(t):
+        print("я все, дядь")
+        finish_test(message)
+    else:
+        # если не все вопросы заданы
+        next_query(message)
+
+
+    if back_q:
+        if message.text.isdigit():
+            text = int(message.text)
+            if 1 <= text < currentQuestion:
+                currentQuestion = text - 1
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
+                user_ans = user_ans[:currentQuestion]
+                back_q = False
+                bot.send_message(message.chat.id, t[currentQuestion])
+                return
+            else:
+                bot.send_message(
+                    message.chat.id,
+                    f"Введите число в диапазоне от 1 до {currentQuestion - 1}"
+                )
+                return
+        else:
+            bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
+            return
+
+    if c.put(str(message.chat.id))[2]: #если этот тест уже пройден
+        bot.send_message(
+            message.chat.id,
+            f"Кажется, Вы уже прошли тестирование. Для повторного прохождения введите /start"
+        )
+        return
 
 
 bot.polling(none_stop=True)

@@ -12,15 +12,15 @@ openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
 
-global finished #завершен тест или нет
+global finished # завершен тест или нет
 finished = False
 global back_q
 back_q = False
-gate = [0, 6] # варианты ответов
+gate = [0, 6]   # варианты ответов
 
 
-#global gpt_running
-#gpt_running = False
+# global gpt_running
+# gpt_running = False
 
 
 # достаем вопросы
@@ -35,8 +35,8 @@ def start(message):
     global finished
     currentQuestion = 0
     finished = False
-    #global gpt_running
-    #gpt_running = False
+    # global gpt_running
+    # gpt_running = False
 
     bot.send_message(
         message.chat.id,
@@ -55,7 +55,7 @@ def start(message):
 
     # отправляем текущий вопрос
     bot.send_message(message.chat.id, t[0])
-    c.push(str(message.chat.id), [currentQuestion + 1, [],finished])
+    c.push(str(message.chat.id), [currentQuestion, [], finished])
 
 
 @bot.message_handler(commands=["info"])
@@ -63,7 +63,7 @@ def info(message):
     currentQuestion = c.put(str(message.chat.id))[0]
     bot.send_message(
         message.chat.id,
-        f"Списк команд:\n"
+        f"Список команд:\n"
         f"/start - запустить/перезапустить бота\n"
         f"/info - открыть список команд\n"
         f"/back - вернуться к предыдущему вопросу"
@@ -83,6 +83,7 @@ def back(message):
             message.chat.id,
             f"Не выёживайся!"
         )
+        # currentQuestion -= 1
         bot.send_message(message.chat.id, t[currentQuestion])
         return
     bot.send_message(
@@ -92,13 +93,11 @@ def back(message):
     back_q = True
 
 
-
 def finish_test(message):
-
-        user_ans=c.put(str(message.chat.id))[1]
+        user_ans = c.put(str(message.chat.id))[1]
         max_val = len(t) * gate[1]
 
-        #генерация и отправка диаграммы
+        # генерация и отправка диаграммы
         diagramGenerator.Diagram().bebra([sum(user_ans), max_val - sum(user_ans)])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
@@ -128,28 +127,42 @@ def finish_test(message):
 
 
 def next_query(message):
-    currentQuestion=c.put(str(message.chat.id))[0]
+    global back_q
+    currentQuestion = c.put(str(message.chat.id))[0] + 1
     user_ans = c.put(str(message.chat.id))[1]
+
+    if back_q:
+        bot.send_message(message.chat.id, t[currentQuestion - 1])
+        return
+
     # проверяем является ли ответ числом
     if message.text.isdigit():
         text = int(message.text)
         # если да, тогда смотрим входит ли он в диапозон от 0 до 6
         if gate[0] <= text <= gate[1]:
             # увеличиваем результат и счетчик вопросов
-            user_ans.append(text)
-            c.push(str(message.chat.id), [currentQuestion + 1, user_ans, finished])
-            if currentQuestion <= len(t) - 1:
+            print(currentQuestion)
+            if not back_q:
+                while len(user_ans) < currentQuestion:
+                    user_ans.append(0)
+                user_ans[currentQuestion - 1] = text
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
+                # bot.send_message(message.chat.id, str(sum(user_ans)))
+                print(sum(user_ans))
+            if currentQuestion < len(t):
                 bot.send_message(message.chat.id, t[currentQuestion])
+            else:
+                finish_test(message)
         # если не входит повторяем текущий вопрос
         else:
             bot.send_message(message.chat.id, f"шкала от {gate[0]} до {gate[1]}")
             bot.send_message(message.chat.id, t[currentQuestion - 1])
+            c.push(str(message.chat.id), [currentQuestion - 1, user_ans, finished])
     else:
         # если ответ не является числом, говорим об этом юзеру
         bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
         bot.send_message(message.chat.id, t[currentQuestion - 1])
-
-
+        c.push(str(message.chat.id), [currentQuestion - 1, user_ans, finished])
 
 
 # принимаем ответ
@@ -157,45 +170,46 @@ def next_query(message):
 def lalal(message):
     global finished
     global back_q
-    currentQuestion=c.put(str(message.chat.id))[0]
-    user_ans=c.put(str(message.chat.id))[1]
-    print(str(message.chat.id),message.text, currentQuestion)
-
-    # когда вопросы закончились
-    if currentQuestion >= len(t):
-        print("я все, дядь")
-        finish_test(message)
-    else:
-        # если не все вопросы заданы
-        next_query(message)
-
+    currentQuestion = c.put(str(message.chat.id))[0]
+    user_ans = c.put(str(message.chat.id))[1]
+    print(str(message.chat.id), message.text, currentQuestion, back_q)
+    print(user_ans)
 
     if back_q:
         if message.text.isdigit():
             text = int(message.text)
-            if 1 <= text < currentQuestion:
+            if 1 <= text <= currentQuestion:
                 currentQuestion = text - 1
-                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
                 user_ans = user_ans[:currentQuestion]
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
+                # bot.send_message(message.chat.id, t[currentQuestion - 1])
+                next_query(message)
                 back_q = False
-                bot.send_message(message.chat.id, t[currentQuestion])
                 return
             else:
                 bot.send_message(
                     message.chat.id,
-                    f"Введите число в диапазоне от 1 до {currentQuestion - 1}"
+                    f"Введите число в диапазоне от 1 до {currentQuestion}"
                 )
                 return
         else:
             bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
             return
 
-    if c.put(str(message.chat.id))[2]: #если этот тест уже пройден
+    if c.put(str(message.chat.id))[2]:  # если этот тест уже пройден
         bot.send_message(
             message.chat.id,
             f"Кажется, Вы уже прошли тестирование. Для повторного прохождения введите /start"
         )
         return
+
+    # когда вопросы закончились
+    if currentQuestion == len(t):
+        print("я все, дядь")
+        finish_test(message)
+    else:
+        # если не все вопросы заданы
+        next_query(message)
 
 
 bot.polling(none_stop=True)

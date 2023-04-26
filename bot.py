@@ -102,9 +102,9 @@ def reisastestSum(message):
 
 def finish_test(message):
         max_val = len(t) * gate[1]
-        resSum=reisastestSum()
+        resSum=reisastestSum(message)
         # генерация и отправка диаграммы
-        diagramGenerator.Diagram().bebra(resSum,max_val - resSum)
+        diagramGenerator.Diagram().bebra([resSum, max_val - resSum])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
 
@@ -155,9 +155,9 @@ def next_query(message):
             # увеличиваем результат и счетчик вопросов
             print(currentQuestion)
             if not back_q:
-                while len(user_ans) < currentQuestion:
+                while len(user_ans) <= currentQuestion:
                     user_ans.append(0)
-                user_ans[currentQuestion - 1] = text
+                user_ans[currentQuestion] = text
                 c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
                 # bot.send_message(message.chat.id, str(sum(user_ans)))
                 print(sum(user_ans))

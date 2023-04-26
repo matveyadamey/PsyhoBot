@@ -11,11 +11,6 @@ token = c.put("TELEGRAM_TOKEN")
 openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
-
-global finished # завершен тест или нет
-finished = False
-global back_q
-back_q = False
 gate = [0, 6]   # варианты ответов
 
 
@@ -35,6 +30,8 @@ def start(message):
     global finished
     currentQuestion = 0
     finished = False
+    global back_q
+    back_q=False
     # global gpt_running
     # gpt_running = False
 
@@ -55,7 +52,7 @@ def start(message):
 
     # отправляем текущий вопрос
     bot.send_message(message.chat.id, t[0])
-    c.push(str(message.chat.id), [currentQuestion, [], finished])
+    c.push(str(message.chat.id),[currentQuestion,[],finished,back_q])
 
 
 @bot.message_handler(commands=["info"])
@@ -74,10 +71,9 @@ def info(message):
 # возвращаемся к вопросу
 @bot.message_handler(commands=['back'])
 def back(message):
-    global finished
-    global back_q
     currentQuestion = c.put(str(message.chat.id))[0]
-
+    user_ans=c.put(str(message.chat.id))[1]
+    finished=c.put(str(message.chat.id))[2]
     if currentQuestion == 0:
         bot.send_message(
             message.chat.id,
@@ -90,47 +86,63 @@ def back(message):
         message.chat.id,
         f"Введите номер вопроса, к которому хотите вернуться"
     )
-    back_q = True
+    back_q=True
+    c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
+
+
+
+
+def reisastestSum(message):
+    u = c.put(str(message.chat.id))[1]
+    first=u[2]+u[5]+u[6]+u[7]+u[9]+u[17]+u[19]+u[20]+u[21]+u[24]+u[26]+u[27]+u[28]
+    second=u[0]+u[1]+u[3]+u[4]+u[8]+u[10]+u[11]+u[12]+u[13]+u[14]+u[15]+u[16]+u[18]+u[22]+u[23]+u[25]+u[29]
+    resSum=first+72-second
+    return resSum
 
 
 def finish_test(message):
-        user_ans = c.put(str(message.chat.id))[1]
         max_val = len(t) * gate[1]
-
+        resSum=reisastestSum()
         # генерация и отправка диаграммы
-        diagramGenerator.Diagram().bebra([sum(user_ans), max_val - sum(user_ans)])
+        diagramGenerator.Diagram().bebra(resSum,max_val - resSum)
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
 
         # отправлялка советов
 
-        if sum(user_ans) < max_val / 3:
+        if 0<=resSum<=24:
             bot.send_message(
                 message.chat.id,
-                f"Небольшой совет: вы сможете достичь больших высот, если будете вести себя увереннее ;)"
+                "очень неуверен в себе"
             )
-        if max_val / 3 <= sum(user_ans) < max_val / 3 * 2:
+        if 25 <= resSum <=48 :
             bot.send_message(
                 message.chat.id,
-                "Вы превосходно сбалансированы в вопросе своей уверенности, нам даже нечего рекомендовать ;)"
+                "скорее не уверен, чем уверен"
             )
-        if max_val / 3 * 2 <= sum(user_ans):
+        if 49 <= resSum <=72:
             bot.send_message(
-                message.chat.id,
-                f"Вы крайне уверены в себе, Вам может это показаться приятным, но, к сожалению, "
-                f"иногда Ваше поведение может быть агрессивным и вызывать раздражение у окружающих. "
-                f"Выводы можете делать сами ;)"
-            )
+                message.chat.id,"среднее значение уверенности")
+        if 73 <= resSum <= 96:
+            bot.send_message(
+                message.chat.id, "уверен в себе")
+        if 97 <= resSum <=120:
+            bot.send_message(
+                message.chat.id,"слишком самоуверен")
 
         # обнуляем текущий вопрос и удаляем тест из списка ожидающих прохождение
-        c.push(str(message.chat.id), [0, 0, [], True])
+        currentQuestion=0
+        user_ans=[]
+        finished=True
+        back_q=False
+        c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
 
 
 def next_query(message):
-    global back_q
+    finished=False
     currentQuestion = c.put(str(message.chat.id))[0] + 1
     user_ans = c.put(str(message.chat.id))[1]
-
+    back_q=c.put(str(message.chat.id))[3]
     if back_q:
         bot.send_message(message.chat.id, t[currentQuestion - 1])
         return
@@ -146,7 +158,7 @@ def next_query(message):
                 while len(user_ans) < currentQuestion:
                     user_ans.append(0)
                 user_ans[currentQuestion - 1] = text
-                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
+                c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
                 # bot.send_message(message.chat.id, str(sum(user_ans)))
                 print(sum(user_ans))
             if currentQuestion < len(t):
@@ -157,34 +169,33 @@ def next_query(message):
         else:
             bot.send_message(message.chat.id, f"шкала от {gate[0]} до {gate[1]}")
             bot.send_message(message.chat.id, t[currentQuestion - 1])
-            c.push(str(message.chat.id), [currentQuestion - 1, user_ans, finished])
+            currentQuestion-=1
+            c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
     else:
         # если ответ не является числом, говорим об этом юзеру
         bot.send_message(message.chat.id, "Я не могу понять твой ответ :(")
-        bot.send_message(message.chat.id, t[currentQuestion - 1])
-        c.push(str(message.chat.id), [currentQuestion - 1, user_ans, finished])
+        currentQuestion -= 1
+        bot.send_message(message.chat.id, t[currentQuestion])
+        c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
 
 
 # принимаем ответ
 @bot.message_handler(content_types=["text"])
 def lalal(message):
-    global finished
-    global back_q
     currentQuestion = c.put(str(message.chat.id))[0]
     user_ans = c.put(str(message.chat.id))[1]
-    print(str(message.chat.id), message.text, currentQuestion, back_q)
-    print(user_ans)
-
+    back_q=c.put(str(message.chat.id))[3]
+    finished=False
     if back_q:
         if message.text.isdigit():
             text = int(message.text)
             if 1 <= text <= currentQuestion:
-                currentQuestion = text - 1
+                currentQuestion = text - 2
                 user_ans = user_ans[:currentQuestion]
-                c.push(str(message.chat.id), [currentQuestion, user_ans, finished])
                 # bot.send_message(message.chat.id, t[currentQuestion - 1])
-                next_query(message)
                 back_q = False
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished, back_q])
+                next_query(message)
                 return
             else:
                 bot.send_message(

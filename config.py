@@ -14,4 +14,4 @@ class Config:
             x = json.load(f)
         x[k] = data
         with open("config.json", "w") as read_file:
-            json.dump(x, read_file)
+            json.dump(x, read_file)\

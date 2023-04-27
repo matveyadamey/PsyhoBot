@@ -6,7 +6,7 @@ class Diagram:
                 matplotlib.use('agg')
                 cards = [
                         'уверенность',
-                        'малодушие'
+                        ''
                 ]
                 fig = plt.figure(figsize=(10, 7))
                 plt.pie(sum, labels=cards)

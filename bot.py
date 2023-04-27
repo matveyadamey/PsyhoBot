@@ -25,13 +25,11 @@ r = file.read()
 t = r.split("\n")
 
 
-
 @bot.message_handler(commands=["start"])
 def start(message):
     global finished
     currentQuestion = 0
     finished = False
-    global back_q
     back_q=False
     # global gpt_running
     # gpt_running = False
@@ -148,6 +146,8 @@ def finish_test(message):
         finished=True
         back_q=False
         c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
+
+
 def next_query(message):
     finished=False
     currentQuestion = c.put(str(message.chat.id))[0] + 1
@@ -163,14 +163,14 @@ def next_query(message):
         # если да, тогда смотрим входит ли он в диапозон от 0 до 6
         if gate[0] <= text <= gate[1]:
             # увеличиваем результат и счетчик вопросов
-            print(currentQuestion)
+            # print(currentQuestion)
             if not back_q:
                 while len(user_ans) <= currentQuestion:
                     user_ans.append(0)
                 user_ans[currentQuestion] = text
                 c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
                 # bot.send_message(message.chat.id, str(sum(user_ans)))
-                print(sum(user_ans))
+                # print(sum(user_ans))
             if currentQuestion < len(t):
                 bot.send_message(message.chat.id, t[currentQuestion])
             else:
@@ -195,17 +195,20 @@ def lalal(message):
     currentQuestion = c.put(str(message.chat.id))[0]
     user_ans = c.put(str(message.chat.id))[1]
     back_q=c.put(str(message.chat.id))[3]
+    print(back_q)
     finished=False
     if back_q:
         if message.text.isdigit():
             text = int(message.text)
             if 1 <= text <= currentQuestion:
-                currentQuestion = text - 2
+                currentQuestion = text - 1
                 user_ans = user_ans[:currentQuestion]
                 # bot.send_message(message.chat.id, t[currentQuestion - 1])
-                back_q = False
                 c.push(str(message.chat.id), [currentQuestion, user_ans, finished, back_q])
                 next_query(message)
+                currentQuestion = c.put(str(message.chat.id))[0]
+                user_ans = c.put(str(message.chat.id))[1]
+                c.push(str(message.chat.id), [currentQuestion, user_ans, finished, False])
                 return
             else:
                 bot.send_message(

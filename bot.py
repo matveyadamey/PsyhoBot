@@ -124,13 +124,13 @@ def finish_test(message):
 
         if 49 <= resSum <=72:
             #среднее значение уверенности
-            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если среднее значение уверенности в себе?"))
+            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если у тебя среднее значение уверенности в себе?"))
         if 73 <= resSum <= 96:
-            "уверен в себе"
+            #уверен в себе
             bot.send_message(message.chat.id, chat_gpt.ask("Что делать если ты уверен в себе?"))
 
         if 97 <= resSum <=120:
-            "слишком самоуверен"
+            #слишком самоуверен
             bot.send_message(message.chat.id, chat_gpt.ask("Что делать если ты слишком самоуверен в себе?"))
 
         # обнуляем текущий вопрос и удаляем тест из списка ожидающих прохождение

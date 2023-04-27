@@ -188,8 +188,8 @@ def lalal(message):
     currentQuestion = c.put(str(message.chat.id))[0]
     user_ans = c.put(str(message.chat.id))[1]
     back_q=c.put(str(message.chat.id))[3]
-    print(back_q)
     finished=False
+    print(message.text)
     if back_q:
         if message.text.isdigit():
             text = int(message.text)

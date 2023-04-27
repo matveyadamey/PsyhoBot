@@ -1,5 +1,6 @@
 import openai
 import config
+
 class ChatGPT:
     def ask(self,prompt):
         c=config.Config()

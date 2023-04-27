@@ -105,14 +105,16 @@ def reisastestSum(message):
 
 
 def finish_test(message):
-        max_val = len(t) * gate[1]
+        max_val = 126
         resSum=reisastestSum(message)
+
         # генерация и отправка диаграммы
         diagramGenerator.Diagram().bebra([resSum, max_val - resSum])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
 
         # отправлялка советов
+        bot.send_message(message.chat.id,"Пожалуйста подождите, результаты теста обрабатываются...")
 
         if 0<=resSum<=24:
             #очень неуверен в себе

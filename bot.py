@@ -12,8 +12,6 @@ token = c.put("TELEGRAM_TOKEN")
 openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
-
-global markup
 gate = [0, 6]   # варианты ответов
 
 
@@ -31,13 +29,13 @@ t = r.split("\n")
 @bot.message_handler(commands=["start"])
 def start(message):
     global finished
-    global markup
     currentQuestion = 0
     finished = False
     global back_q
     back_q=False
     # global gpt_running
     # gpt_running = False
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("0")
     btn2 = types.KeyboardButton("1")
@@ -46,8 +44,8 @@ def start(message):
     btn5 = types.KeyboardButton("4")
     btn6 = types.KeyboardButton("5")
     btn7 = types.KeyboardButton("6")
-    btn8=types.KeyboardButton("/back")
-    markup.add(btn1, btn2,btn3,btn4,btn5,btn6,btn7,btn8)
+    btn8 = types.KeyboardButton("/back")
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
 
     bot.send_message(
         message.chat.id,
@@ -61,7 +59,7 @@ def start(message):
         f"Но а мы переходим к небольшому тесту.\n"
         f"На все вопросы отвечай числом от {gate[0]} до {gate[1]}, где \"{gate[0]}\" означает, "
         f"что изложенная позиция тебе совершенно не подходит, "
-        f"а \"{gate[1]}\" - что ты полностью согласен с вышеуказанным",reply_markup=markup
+        f"а \"{gate[1]}\" - что ты полностью согласен с вышеуказанным", reply_markup=markup
     )
 
     # отправляем текущий вопрос
@@ -118,7 +116,7 @@ def finish_test(message):
         max_val = len(t) * gate[1]
         resSum=reisastestSum(message)
         # генерация и отправка диаграммы
-        diagramGenerator.Diagram().bebra([resSum,max_val - resSum])
+        diagramGenerator.Diagram().bebra([resSum, max_val - resSum])
         photo = open("bebra.png", "rb")
         bot.send_photo(message.chat.id, photo)
 
@@ -150,8 +148,6 @@ def finish_test(message):
         finished=True
         back_q=False
         c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
-
-
 def next_query(message):
     finished=False
     currentQuestion = c.put(str(message.chat.id))[0] + 1
@@ -169,9 +165,9 @@ def next_query(message):
             # увеличиваем результат и счетчик вопросов
             print(currentQuestion)
             if not back_q:
-                while len(user_ans) < currentQuestion:
+                while len(user_ans) <= currentQuestion:
                     user_ans.append(0)
-                user_ans[currentQuestion - 1] = text
+                user_ans[currentQuestion] = text
                 c.push(str(message.chat.id),[currentQuestion,user_ans,finished,back_q])
                 # bot.send_message(message.chat.id, str(sum(user_ans)))
                 print(sum(user_ans))
@@ -238,3 +234,4 @@ def lalal(message):
 
 
 bot.polling(none_stop=True)
+

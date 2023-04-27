@@ -2,21 +2,17 @@ import telebot
 from telebot import types
 import config
 import diagramGenerator
-
-import openai
+import chatGPT
 
 
 # достаем телеграм токен
 c = config.Config()
+chat_gpt=chatGPT.ChatGPT()
 token = c.put("TELEGRAM_TOKEN")
-openai.api_key = c.put("openai_token")
 bot = telebot.TeleBot(token)
 
 gate = [0, 6]   # варианты ответов
 
-
-# global gpt_running
-# gpt_running = False
 
 
 # достаем вопросы
@@ -31,8 +27,6 @@ def start(message):
     currentQuestion = 0
     finished = False
     back_q=False
-    # global gpt_running
-    # gpt_running = False
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("0")
@@ -121,24 +115,23 @@ def finish_test(message):
         # отправлялка советов
 
         if 0<=resSum<=24:
-            bot.send_message(
-                message.chat.id,
-                "очень неуверен в себе"
-            )
+            #очень неуверен в себе
+            bot.send_message(message.chat.id,str(chat_gpt.ask("Что делать если ты очень неуверен в себе?")))
+
         if 25 <= resSum <=48 :
-            bot.send_message(
-                message.chat.id,
-                "скорее не уверен, чем уверен"
-            )
+            #скорее не уверен, чем уверен
+            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если ты скорее не уверен, чем уверен в себе?"))
+
         if 49 <= resSum <=72:
-            bot.send_message(
-                message.chat.id,"среднее значение уверенности")
+            #среднее значение уверенности
+            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если среднее значение уверенности в себе?"))
         if 73 <= resSum <= 96:
-            bot.send_message(
-                message.chat.id, "уверен в себе")
+            "уверен в себе"
+            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если ты уверен в себе?"))
+
         if 97 <= resSum <=120:
-            bot.send_message(
-                message.chat.id,"слишком самоуверен")
+            "слишком самоуверен"
+            bot.send_message(message.chat.id, chat_gpt.ask("Что делать если ты слишком самоуверен в себе?"))
 
         # обнуляем текущий вопрос и удаляем тест из списка ожидающих прохождение
         currentQuestion=0
